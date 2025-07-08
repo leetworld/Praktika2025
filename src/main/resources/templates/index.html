@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Конвертер файлов</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 500px; margin: auto; }
+        label, select, input { display: block; margin: 10px 0; }
+        button { padding: 8px 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Конвертер файлов (XML, JSON, YAML)</h2>
+    <form id="convertForm" method="post" enctype="multipart/form-data" action="/convert">
+        <label for="file">Выберите файл:</label>
+        <input type="file" id="file" name="file" required>
+        <label for="targetFormat">В какой формат конвертировать:</label>
+        <select id="targetFormat" name="targetFormat" required>
+            <option value="json">JSON</option>
+            <option value="xml">XML</option>
+            <option value="yaml">YAML</option>
+            <option value="yml">YML</option>
+            <option value="pdf">PDF (из DOC)</option>
+            <option value="jpeg">JPEG (из PNG)</option>
+            <option value="docx">DOCX (из PDF)</option>
+        </select>
+        <button type="submit">Конвертировать</button>
+    </form>
+    <div id="error" style="color:red;"></div>
+</div>
+<script>
+    document.getElementById('convertForm').onsubmit = function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = new FormData(form);
+        fetch('/convert', {
+            method: 'POST',
+            body: data
+        })
+        .then(response => {
+            if (!response.ok) return response.text().then(text => { throw new Error(text); });
+            return response.blob().then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = form.file.files[0].name.replace(/\.[^.]+$/, '') + '.' + form.targetFormat.value;
+                a.click();
+            });
+        })
+        .catch(err => {
+            document.getElementById('error').textContent = err.message;
+        });
+    };
+</script>
+</body>
+</html> 

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Приложение для конвертации файлов</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-ready { color: green; }
+        .status-error { color: red; }
+        .tab-content { margin-top: 20px; }
+        .file-row td, .file-row th { vertical-align: middle; }
+        .table thead th { background: #f8f9fa; }
+        .btn-green { background: #28a745; color: #fff; }
+        .btn-green:hover { background: #218838; color: #fff; }
+        .btn-blue { background: #007bff; color: #fff; }
+        .btn-blue:hover { background: #0056b3; color: #fff; }
+        .status-bar { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h4>Приложение для конвертации файлов</h4>
+    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab">Файлы</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">История</button>
+        </li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="files" role="tabpanel">
+            <div class="mt-3 mb-2">
+                <input type="file" id="fileInput" multiple style="display:none;">
+                <button class="btn btn-primary btn-sm" id="addFileBtn">Добавить файл</button>
+                <select class="form-select d-inline-block w-auto ms-2" id="formatSelect">
+                    <option value="pdf">PDF</option>
+                    <option value="docx">DOCX</option>
+                    <option value="jpeg">JPEG</option>
+                    <option value="txt">TXT</option>
+                    <option value="xml">XML</option>
+                    <option value="json">JSON</option>
+                    <option value="yaml">YAML</option>
+                </select>
+                <span class="ms-2">Качество:</span>
+                <select class="form-select d-inline-block w-auto" id="qualitySelect">
+                    <option>Высокое</option>
+                    <option>Среднее</option>
+                    <option>Низкое</option>
+                </select>
+            </div>
+            <table class="table table-bordered align-middle mt-2">
+                <thead>
+                <tr>
+                    <th>Имя файла</th>
+                    <th>Формат</th>
+                    <th>Статус</th>
+                    <th>Дата загрузки</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody id="filesTableBody">
+                <!-- Динамически -->
+                </tbody>
+            </table>
+            <button class="btn btn-green me-2" id="convertBtn">Начать конвертацию</button>
+            <button class="btn btn-blue" id="downloadAllBtn">Скачать все</button>
+        </div>
+        <div class="tab-pane fade" id="history" role="tabpanel">
+            <div class="mt-3">
+                <table class="table table-bordered align-middle" id="historyTable" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Имя файла</th>
+                            <th>Формат</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+                <div id="historyEmpty">История пуста</div>
+            </div>
+        </div>
+    </div>
+    <div class="status-bar" id="statusBar">Статус: Готово</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const files = [];
+const history = [];
+const filesTableBody = document.getElementById('filesTableBody');
+const fileInput = document.getElementById('fileInput');
+const addFileBtn = document.getElementById('addFileBtn');
+const convertBtn = document.getElementById('convertBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const formatSelect = document.getElementById('formatSelect');
+const qualitySelect = document.getElementById('qualitySelect');
+const statusBar = document.getElementById('statusBar');
+const historyTable = document.getElementById('historyTable');
+const historyTableBody = document.getElementById('historyTableBody');
+const historyEmpty = document.getElementById('historyEmpty');
+
+function renderTable() {
+    filesTableBody.innerHTML = '';
+    files.forEach((f, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'file-row';
+        tr.innerHTML = `
+            <td>${f.name}</td>
+            <td>${f.format}</td>
+            <td class="${f.status === 'Готов' ? 'status-ready' : (f.status === 'Ошибка' ? 'status-error' : '')}">${f.status}</td>
+            <td>${f.date}</td>
+            <td><button class="btn btn-outline-danger btn-sm" onclick="removeFile(${idx})">Удалить</button></td>
+        `;
+        filesTableBody.appendChild(tr);
+    });
+}
+
+function renderHistory() {
+    if (history.length === 0) {
+        historyTable.style.display = 'none';
+        historyEmpty.style.display = '';
+    } else {
+        historyTable.style.display = '';
+        historyEmpty.style.display = 'none';
+        historyTableBody.innerHTML = '';
+        history.forEach(h => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${h.date}</td>
+                <td>${h.name}</td>
+                <td>${h.format}</td>
+                <td class="${h.status === 'Готов' ? 'status-ready' : (h.status === 'Ошибка' ? 'status-error' : '')}">${h.status}</td>
+            `;
+            historyTableBody.appendChild(tr);
+        });
+    }
+}
+
+window.removeFile = function(idx) {
+    files.splice(idx, 1);
+    renderTable();
+};
+
+addFileBtn.onclick = () => fileInput.click();
+fileInput.onchange = () => {
+    Array.from(fileInput.files).forEach(file => {
+        files.push({
+            file: file,
+            name: file.name,
+            format: file.name.split('.').pop().toUpperCase(),
+            status: 'Ожидание',
+            date: new Date().toISOString().slice(0, 10)
+        });
+    });
+    renderTable();
+    fileInput.value = '';
+};
+
+convertBtn.onclick = async () => {
+    statusBar.textContent = 'Статус: Конвертация...';
+    for (let f of files) {
+        f.status = 'В процессе';
+        renderTable();
+        const formData = new FormData();
+        formData.append('file', f.file);
+        formData.append('targetFormat', formatSelect.value);
+        try {
+            const response = await fetch('/convert', { method: 'POST', body: formData });
+            if (!response.ok) throw new Error('Ошибка конвертации');
+            const blob = await response.blob();
+            f.convertedBlob = blob;
+            f.status = 'Готов';
+            f.format = formatSelect.value.toUpperCase();
+        } catch (e) {
+            f.status = 'Ошибка';
+        }
+        history.unshift({
+            date: f.date,
+            name: f.name,
+            format: formatSelect.value.toUpperCase(),
+            status: f.status
+        });
+        renderTable();
+        renderHistory();
+    }
+    statusBar.textContent = 'Статус: Готово';
+};
+
+downloadAllBtn.onclick = () => {
+    files.forEach(f => {
+        if (f.status === 'Готов' && f.convertedBlob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(f.convertedBlob);
+            a.download = f.name.replace(/\.[^.]+$/, '') + '.' + f.format.toLowerCase();
+            a.click();
+        }
+    });
+};
+
+renderTable();
+renderHistory();
+</script>
+</body>
+</html> 
